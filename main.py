@@ -41,27 +41,31 @@ def translate_text(text, src_lang="en", dest_lang="en"):
 # Function to get voice input
 def get_voice_input(lang="en"):
     recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        print("Listening for your command...")
-        speak("Please say your command.", lang)
-        recognizer.adjust_for_ambient_noise(source)
-        try:
+    try:
+        with sr.Microphone(device_index=2) as source:  # Ear buds
+            print("Listening for your command...")
+            speak("Please say your command.", lang)
+            recognizer.adjust_for_ambient_noise(source, duration=1)
             audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
             command = recognizer.recognize_google(audio, language=lang)
             print(f"You said: {command}")
             return command
-        except sr.WaitTimeoutError:
-            print("No speech detected. Please try again.")
-            speak("No speech detected. Please try again.", lang)
-            return None
-        except sr.UnknownValueError:
-            print("Could not understand audio. Please try again.")
-            speak("Could not understand audio. Please try again.", lang)
-            return None
-        except sr.RequestError as e:
-            print(f"Speech recognition error: {e}. Falling back to text input.")
-            speak("Speech recognition error. Please type your command.", lang)
-            return input("Enter your command (or 'exit' to quit): ")
+    except sr.UnknownValueError:
+        print("Could not understand audio. Please try again.")
+        speak("Could not understand audio. Please try again.", lang)
+        return None
+    except sr.RequestError as e:
+        print(f"Speech recognition error: {e}. Falling back to text input.")
+        speak("Speech recognition error. Please type your command.", lang)
+        return input("Enter your command (or 'exit' to quit): ")
+    except sr.WaitTimeoutError:
+        print("No speech detected. Please try again.")
+        speak("No speech detected. Please try again.", lang)
+        return None
+    except Exception as e:
+        print(f"Microphone or other error: {e}. Falling back to text input.")
+        speak("Microphone error. Please type your command.", lang)
+        return input("Enter your command (or 'exit' to quit): ")
 
 # Function to process commands
 def process_command(command, lang="en"):
