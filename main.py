@@ -7,9 +7,9 @@ import time
 
 # Mock eCommerce catalog
 catalog = {
-    "coffee": 5.99,
-    "sandwich": 7.99,
-    "water": 1.99
+    "coffee": 30,
+    "sandwich": 100,
+    "water": 20
 }
 
 # Supported languages
@@ -77,12 +77,12 @@ def process_command(command, lang="en"):
     if "navigate" in command or "go to" in command:
         response = "Navigating to your destination. Please follow the route."
     elif "fuel" in command or "gas" in command:
-        response = "Fuel level is at 75%. Nearest gas station is 2 miles away."
+        response = "Fuel level is at 75%. Nearest gas station is 2 Kilometers away."
     # eCommerce commands
     elif "order" in command:
         for item in catalog:
             if item in command:
-                response = f"Ordered {item} for ${catalog[item]}. Delivery to your car in 10 minutes."
+                response = f"Ordered {item} for ₹{catalog[item]}. Delivery to your car in 10 minutes."
                 break
         else:
             response = "Item not found. Available items: " + ", ".join(catalog.keys())
