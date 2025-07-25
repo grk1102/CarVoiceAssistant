@@ -1,6 +1,7 @@
 from gtts import gTTS
 from playsound import playsound
 from translate import Translator
+import speech_recognition as sr
 import os
 import time
 
@@ -37,8 +38,35 @@ def translate_text(text, src_lang="en", dest_lang="en"):
         print(f"Translation error: {e}")
         return text
 
+# Function to get voice input
+def get_voice_input(lang="en"):
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("Listening for your command...")
+        speak("Please say your command.", lang)
+        recognizer.adjust_for_ambient_noise(source)
+        try:
+            audio = recognizer.listen(source, timeout=5, phrase_time_limit=5)
+            command = recognizer.recognize_google(audio, language=lang)
+            print(f"You said: {command}")
+            return command
+        except sr.WaitTimeoutError:
+            print("No speech detected. Please try again.")
+            speak("No speech detected. Please try again.", lang)
+            return None
+        except sr.UnknownValueError:
+            print("Could not understand audio. Please try again.")
+            speak("Could not understand audio. Please try again.", lang)
+            return None
+        except sr.RequestError as e:
+            print(f"Speech recognition error: {e}. Falling back to text input.")
+            speak("Speech recognition error. Please type your command.", lang)
+            return input("Enter your command (or 'exit' to quit): ")
+
 # Function to process commands
 def process_command(command, lang="en"):
+    if command is None:
+        return
     command = command.lower().strip()
     
     # Navigation commands
@@ -64,25 +92,35 @@ def process_command(command, lang="en"):
     print(f"Assistant: {translated_response}")
     speak(translated_response, lang)
     return translated_response
-    
+
 # Main loop for the assistant
 def main():
+    # Initialize speech recognizer
+    recognizer = sr.Recognizer()
     
-    # Ask for user’s language preference
-    lang_choice = input("Select language (english/telugu): ").lower()
-    lang_code = languages.get(lang_choice, "en")
-
-    print("Welcome to the In-Car Voice Assistant!")
-    speak("Welcome to the In-Car Voice Assistant!",lang_code)  
-    print("Example commands: 'navigate to store', 'check fuel', 'order coffee', 'show catalog'")
-    speak("Example commands: 'navigate to store', 'check fuel', 'order coffee', 'show catalog'",lang_code)
+    # Ask for user’s language preference (voice input)
+    print("Please say 'english' or 'telugu' to select language.")
+    speak("Please say 'english' or 'telugu' to select language.", "en")
+    lang_choice = get_voice_input("en")
+    if lang_choice is None:
+        lang_choice = input("Speech not detected. Type language (english/telugu): ").lower()
+    lang_code = languages.get(lang_choice.lower(), "en")
+    
+    # Welcome message
+    welcome_msg = "Welcome to the In-Car Voice Assistant!"
+    print(welcome_msg)
+    speak(welcome_msg, lang_code)
+    example_msg = "Example commands: navigate to store, check fuel, order coffee, show catalog"
+    print(example_msg)
+    speak(example_msg, lang_code)
     
     while True:
-        # Get user input
-        command = input("Enter your command (or 'exit' to quit): ")
-        if command.lower() == "exit":
-            print("Goodbye!")
-            speak("Goodbye!", lang_code)
+        # Get voice input for commands
+        command = get_voice_input(lang_code)
+        if command and command.lower() == "exit":
+            goodbye_msg = "Goodbye!"
+            print(goodbye_msg)
+            speak(goodbye_msg, lang_code)
             break
         
         # Translate user input to English for processing
