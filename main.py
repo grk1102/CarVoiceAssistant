@@ -4,15 +4,22 @@ from translate import Translator
 import speech_recognition as sr
 import os
 import time
+from flask import Flask, jsonify
 
-# Mock eCommerce and additional data
+app = Flask(__name__)
+
+# Mock eCommerce and additional data (Indian style)
 catalog = {
-    "coffee": 5.99,
-    "sandwich": 7.99,
-    "water": 1.99
+    "coffee": 70,    # ₹70 (approx. ₹50-100 range)
+    "sandwich": 120, # ₹120 (approx. ₹80-150 range)
+    "water": 25      # ₹25 (approx. ₹20-30 range)
 }
-weather_data = {"current": "Sunny, 28°C"}  # Mock weather
-music_playlist = ["song1", "song2", "song3"]  # Mock playlist
+weather_data = {"current": "Sunny, 32°C"}  # Typical Indian weather
+music_playlist = ["Bollywood Hit", "Tamil Song", "Punjabi Track"]  # Indian music
+orders = [
+    {"item": "coffee", "price": 70, "status": "Delivered"},
+    {"item": "sandwich", "price": 120, "status": "Pending"}
+]
 
 # Supported languages
 languages = {
@@ -103,28 +110,29 @@ def process_command(command, lang="en"):
         speak("Good Bye!!")
         return True
     
-    # Navigation commands
+    # Navigation and Indian-style commands
     if "navigate" in command or "go to" in command:
         response = "Navigating to your destination. Please follow the route."
-    elif "fuel" in command or "gas" in command:
-        response = "Fuel level is at 75%. Nearest gas station is 2 miles away."
+    elif "petrol" in command or "fuel" in command:
+        response = "Petrol level is at 75%. Nearest petrol pump is 3 kilometers away."
     # eCommerce commands
     elif "order" in command:
         for item in catalog:
             if item in command:
-                response = f"Ordered {item} for ${catalog[item]}. Delivery to your car in 10 minutes."
+                orders.append({"item": item, "price": catalog[item], "status": "Pending"})
+                response = f"Ordered {item} for ₹{catalog[item]}. Delivery to your car in 10 minutes."
                 break
         else:
-            response = "Item not found. Available items: " + ", ".join(catalog.keys())
+            response = "Item not found. Available items: " + ", ".join(f"{item} (₹{price})" for item, price in catalog.items())
     elif "catalog" in command or "menu" in command:
-        response = "Available items: " + ", ".join(f"{item} (${price})" for item, price in catalog.items())
+        response = "Available items: " + ", ".join(f"{item} (₹{price})" for item, price in catalog.items())
     # New commands
     elif "weather" in command:
         response = f"Current weather: {weather_data['current']}."
     elif "play music" in command:
         response = f"Playing music from playlist: {', '.join(music_playlist)}."
     elif "help" in command:
-        response = "Available commands: navigate, fuel, order, catalog, weather, play music, help, stop, exit."
+        response = "Available commands: navigate, petrol, order, catalog, weather, play music, help, stop, exit."
     else:
         response = "Sorry, I didn't understand that command. Say or type 'help' for options."
     
@@ -132,6 +140,19 @@ def process_command(command, lang="en"):
     print(f"Assistant: {translated_response}")
     speak(translated_response, lang)
     return False
+
+# API endpoints for dashboard
+@app.route('/api/orders', methods=['GET'])
+def get_orders():
+    return jsonify(orders)
+
+@app.route('/api/weather', methods=['GET'])
+def get_weather():
+    return jsonify(weather_data)
+
+@app.route('/api/music', methods=['GET'])
+def get_music():
+    return jsonify({"playlist": music_playlist})
 
 # Main loop for the assistant
 def main():
@@ -150,7 +171,7 @@ def main():
     welcome_msg = "Welcome to the In-Car Voice Assistant!"
     print(welcome_msg)
     speak(welcome_msg, lang_code)
-    example_msg = "Available commands: navigate, fuel, order, catalog, weather, play music, help. Say or type stop or exit to quit."
+    example_msg = "Available commands: navigate, petrol, order, catalog, weather, play music, help. Say or type stop or exit to quit."
     print(example_msg)
     speak(example_msg, lang_code)
     
@@ -160,7 +181,9 @@ def main():
             continue
         if process_command(command, lang_code):
             break
-        time.sleep(1)  # Brief pause to avoid tight looping
+        time.sleep(1)
 
 if __name__ == "__main__":
+    import threading
+    threading.Thread(target=lambda: app.run(host='0.0.0.0', port=5000, debug=False), daemon=True).start()
     main()
