@@ -10,12 +10,16 @@ app = Flask(__name__)
 
 # Mock eCommerce and additional data (Indian style)
 catalog = {
-    "coffee": 70,    # ₹70 (approx. ₹50-100 range)
-    "sandwich": 120, # ₹120 (approx. ₹80-150 range)
-    "water": 25      # ₹25 (approx. ₹20-30 range)
+    "coffee": 70,    # ₹70
+    "sandwich": 120, # ₹120
+    "water": 25      # ₹25
 }
-weather_data = {"current": "Sunny, 32°C"}  # Typical Indian weather
-music_playlist = ["Bollywood Hit", "Tamil Song", "Punjabi Track"]  # Indian music
+weather_data = {"current": "Sunny, 32°C"}
+music_files = [
+    "C:/Users/tinku/OneDrive/Desktop/CarVoiceAssistant/music/song1.mp3",  # Tollywood Hit
+    "C:/Users/tinku/OneDrive/Desktop/CarVoiceAssistant/music/song2.mp3",  # Telugu Classic Song
+    "C:/Users/tinku/OneDrive/Desktop/CarVoiceAssistant/music/song3.mp3"   # Dance Track
+]
 orders = [
     {"item": "coffee", "price": 70, "status": "Delivered"},
     {"item": "sandwich", "price": 120, "status": "Pending"}
@@ -50,18 +54,18 @@ def translate_text(text, src_lang="en", dest_lang="en"):
         return text
 
 # Function to get voice or text input
-def get_input(lang="en", max_retries=2, use_voice=True):
+def get_input(lang="en", max_retries=3, use_voice=True):
     """Get input via voice or text with retry logic."""
     recognizer = sr.Recognizer()
     retries = 0
     while retries <= max_retries:
         if use_voice:
             try:
-                with sr.Microphone(device_index=1) as source:  # Use Realtek mic
+                with sr.Microphone(device_index=1) as source:
                     print("Listening for your command...")
                     speak("Please say your command.", lang)
                     recognizer.adjust_for_ambient_noise(source, duration=1)
-                    audio = recognizer.listen(source, timeout=5, phrase_time_limit=7)
+                    audio = recognizer.listen(source, timeout=5, phrase_time_limit=8)
                     command = recognizer.recognize_google(audio, language=lang if lang == "en" else "te-IN")
                     print(f"You said: {command}")
                     return command.lower().strip()
@@ -74,8 +78,8 @@ def get_input(lang="en", max_retries=2, use_voice=True):
                     speak("Telugu recognition failed. Switching to English.", lang)
                     return get_input("en", max_retries, use_voice)
                 elif retries == max_retries:
-                    print("Max retries reached. Switching to text input.")
-                    speak("Max retries reached. Please type your command or say exit.", lang)
+                    print("Max retries reached. Please type your command.")
+                    speak("Max retries reached. Please type your command.", lang)
                     use_voice = False
             except sr.RequestError as e:
                 print(f"Speech recognition error: {e}. Switching to text input.")
@@ -86,8 +90,8 @@ def get_input(lang="en", max_retries=2, use_voice=True):
                 print(f"No speech detected. Retry {retries}/{max_retries}.")
                 speak(f"No speech detected. Retry {retries} of {max_retries}.", lang)
                 if retries == max_retries:
-                    print("Max retries reached. Switching to text input.")
-                    speak("Max retries reached. Please type your command or say exit.", lang)
+                    print("Max retries reached. Please type your command.")
+                    speak("Max retries reached. Please type your command.", lang)
                     use_voice = False
             except Exception as e:
                 print(f"Microphone error: {e}. Switching to text input.")
@@ -97,13 +101,32 @@ def get_input(lang="en", max_retries=2, use_voice=True):
             return input("Enter your command (or 'exit' to quit): ").lower().strip()
     return None
 
+# Function to play music
+def play_music(selection, lang="en"):
+    """Play the selected music file based on user input."""
+    try:
+        if selection in ["1", "2", "3"]:
+            index = int(selection) - 1
+            if 0 <= index < len(music_files):
+                print(f"Playing {music_files[index].split('/')[-1]}...")
+                speak(f"Playing song number {selection}.", lang)
+                playsound(music_files[index])
+                return True
+        print("Invalid selection. Please say or type 1, 2, or 3.")
+        speak("Invalid selection. Please say or type 1, 2, or 3.", lang)
+        return False
+    except Exception as e:
+        print(f"Error playing music: {e}")
+        speak("Error playing music. Try again.", lang)
+        return False
+
 # Function to process commands
 def process_command(command, lang="en"):
     """Process user commands and return True to exit if 'stop' or 'exit'."""
     if not command:
         return False
     
-    if command in ["stop", "exit"]:
+    if command in ["stop", "exit", "Stop"]:
         print("Stopping the assistant...")
         speak("Stopping the assistant.", lang)
         print("Good Bye!!")
@@ -116,23 +139,27 @@ def process_command(command, lang="en"):
     elif "petrol" in command or "fuel" in command:
         response = "Petrol level is at 75%. Nearest petrol pump is 3 kilometers away."
     # eCommerce commands
-    elif "order" in command:
-        for item in catalog:
-            if item in command:
-                orders.append({"item": item, "price": catalog[item], "status": "Pending"})
-                response = f"Ordered {item} for ₹{catalog[item]}. Delivery to your car in 10 minutes."
-                break
-        else:
-            response = "Item not found. Available items: " + ", ".join(f"{item} (₹{price})" for item, price in catalog.items())
+    elif "order" in command or "buy" in command:
+        # Extract item name after "order" or "buy" if present
+        item = command.replace("order", "").replace("buy", "").strip() or "custom item"
+        orders.append({"item": item, "status": "ordered"})
+        response = f"Your order for {item} is placed."
     elif "catalog" in command or "menu" in command:
         response = "Available items: " + ", ".join(f"{item} (₹{price})" for item, price in catalog.items())
     # New commands
-    elif "weather" in command:
+    elif "weather" in command or "climate" in command:
         response = f"Current weather: {weather_data['current']}."
-    elif "play music" in command:
-        response = f"Playing music from playlist: {', '.join(music_playlist)}."
+    elif "play music" in command or "play songs" in command:
+        speak("Please say or type 1, 2, or 3 to select a song.", lang)
+        selection = get_input(lang)
+        if selection and play_music(selection, lang):
+            response = "Enjoy your music!"
+        else:
+            response = "Music selection failed. Try again."
     elif "help" in command:
-        response = "Available commands: navigate, petrol, order, catalog, weather, play music, help, stop, exit."
+        response = ("Available commands: 'navigate to store', 'petrol', 'order item name', "
+                   "'catalog', 'weather', 'play music', 'help', 'stop', 'exit'. "
+                   "For music, say 'play music' then '1', '2', or '3'.")
     else:
         response = "Sorry, I didn't understand that command. Say or type 'help' for options."
     
@@ -152,7 +179,7 @@ def get_weather():
 
 @app.route('/api/music', methods=['GET'])
 def get_music():
-    return jsonify({"playlist": music_playlist})
+    return jsonify({"playlist": [f"Song {i+1}" for i in range(len(music_files))]})
 
 # Main loop for the assistant
 def main():
@@ -171,7 +198,9 @@ def main():
     welcome_msg = "Welcome to the In-Car Voice Assistant!"
     print(welcome_msg)
     speak(welcome_msg, lang_code)
-    example_msg = "Available commands: navigate, petrol, order, catalog, weather, play music, help. Say or type stop or exit to quit."
+    example_msg = ("Available commands: 'navigate to store', 'petrol', 'order item name', "
+                   "'catalog', 'weather', 'play music then 1, 2, or 3', 'help'. "
+                   "Say or type 'stop' or 'exit' to quit.")
     print(example_msg)
     speak(example_msg, lang_code)
     
